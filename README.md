@@ -28,3 +28,5 @@ Anything prefixed with `VITE_` is included in browser code and must be treated a
 - Wishlist data is browser-local unless a wishlist API is added.
 - Cash on Delivery is not a persistent backend order unless the backend provides an order-creation endpoint for it.
 - Product image URLs must resolve to the deployed backend or a valid public image URL.
+
+Live Demo:-https://salessavvy-frontend-nine.vercel.app/
