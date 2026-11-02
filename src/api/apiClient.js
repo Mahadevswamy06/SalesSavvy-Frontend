@@ -1,14 +1,15 @@
-// Centralized API Client for Sales Savvy frontend
 
-const PRIMARY_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:9090/api';
-const FALLBACK_BASE_URL = '/api';
+// Centralized API Client for Sales Savvy
 
-/**
- * Perform an HTTP request with error handling and automatic token inclusion.
- * Falls back to Vite dev proxy /api if direct backend host is unreachable.
- */
+const PRIMARY_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  'http://localhost:9090/api';
+
 async function request(endpoint, options = {}) {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('salesavvy_token') : null;
+  const token =
+    typeof window !== 'undefined'
+      ? localStorage.getItem('salesavvy_token')
+      : null;
 
   const headers = {
     'Content-Type': 'application/json',
@@ -19,77 +20,54 @@ async function request(endpoint, options = {}) {
   const config = {
     ...options,
     headers,
-    credentials: 'include', // Ensures HTTP-only cookie 'authToken' is forwarded
+    credentials: 'include',
   };
 
-  const urls = [
-    `${PRIMARY_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`,
-    `${FALLBACK_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`,
-  ];
+  const url = `${PRIMARY_BASE_URL.replace(/\/+$/, '')}/${endpoint.replace(/^\/+/, '')}`;
 
-  let lastError = null;
+  const response = await fetch(url, config);
 
-  for (const url of urls) {
-    try {
-      const response = await fetch(url, config);
+  let data = null;
+  const contentType = response.headers.get('content-type');
 
-      let data = null;
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        try {
-          data = await response.json();
-        } catch {
-          data = null;
-        }
-      } else {
-        const text = await response.text();
-        try {
-          data = JSON.parse(text);
-        } catch {
-          data = text;
-        }
-      }
-
-      if (!response.ok) {
-        const error = new Error(
-          (data && (data.error || data.message)) ||
-          `Request failed with status ${response.status} (${response.statusText})`
-        );
-        error.status = response.status;
-        error.data = data;
-        throw error;
-      }
-
-      return data;
-    } catch (err) {
-      lastError = err;
-      // If the error was a response with status code (like 400, 401, 403, 404, 500),
-      // the server was reached, so don't attempt fallback
-      if (err.status) {
-        throw err;
-      }
-      // Otherwise, it was a network failure (connection refused / CORS), try fallback url
-    }
+  if (contentType?.includes('application/json')) {
+    data = await response.json();
+  } else {
+    data = await response.text();
   }
 
-  throw lastError || new Error('Network error: Unable to connect to backend server');
+  if (!response.ok) {
+    const error = new Error(
+      (data && (data.error || data.message)) ||
+      `Request failed with status ${response.status}`
+    );
+    error.status = response.status;
+    error.data = data;
+    throw error;
+  }
+
+  return data;
 }
 
 export const apiClient = {
   request,
-  get: (endpoint, options = {}) => request(endpoint, { ...options, method: 'GET' }),
+  get: (endpoint, options = {}) =>
+    request(endpoint, { ...options, method: 'GET' }),
+
   post: (endpoint, body, options = {}) =>
     request(endpoint, {
       ...options,
       method: 'POST',
       body: body ? JSON.stringify(body) : undefined,
     }),
+
   put: (endpoint, body, options = {}) =>
     request(endpoint, {
       ...options,
       method: 'PUT',
       body: body ? JSON.stringify(body) : undefined,
     }),
+
   delete: (endpoint, body, options = {}) =>
     request(endpoint, {
       ...options,
